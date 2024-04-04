@@ -20,3 +20,11 @@ class Department(BaseModel):
     Name: str
     GroupName: str
     
+class WorkOrder(BaseModel):
+    ProductID: int
+    OrderQty: int
+    StockedQty: int
+    ScrappedQty: int
+    num_weeks: int
+    ScrapReasonID: int
+

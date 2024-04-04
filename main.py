@@ -107,27 +107,6 @@ def get_low_stock_products(quantity: int):
 
 
 
-'''@app.post("/products/low_stock_items", response_model=list[ProductWithStock])
-def post_low_stock_products():
-    try:
-        # Get the low stock products
-        products = get_low_stock_products()
-
-        cursor = conn.cursor()
-
-        for product in products:
-            cursor.execute("""
-                INSERT INTO sales_specialofferproduct (SpecialOfferID, ProductID, rowguid, ModifiedDate)
-                VALUES (%s, %s, UUID(), %s)
-            """, (product.SpecialOfferID, product.ProductID, datetime.datetime.now()))
-
-        conn.commit()
-        cursor.close()
-
-        return products  # Return the inserted products
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error inserting data: {str(e)}")'''
 
 @app.post("/departments/{Name}/{GroupName}")
 def create_department(Name: str, GroupName: str):
@@ -162,21 +141,33 @@ def create_department(Name: str, GroupName: str):
 
 
 
-@app.post("/work_order/{ProductID}/{OrderQty}/{StockedQty}/{ScrappedQty}")
-def create_work_order(ProductID: int, OrderQty: int,StockedQty:int,ScrappedQty:int,num_weeks:int):
+@app.post("/work_order/{ProductID}/{OrderQty}/{StockedQty}/{ScrappedQty}/{ScrapReasonID}")
+def create_work_order(ProductID: int, OrderQty: int, StockedQty: int, ScrappedQty: int, num_weeks: int, ScrapReasonID: int):
+    try:
+        # Validate the path parameters using the WorkOrder model
+        workOrder = WorkOrder(ProductID=ProductID,
+    OrderQty=OrderQty,
+    StockedQty=StockedQty,
+    ScrappedQty=ScrappedQty,
+    num_weeks=num_weeks,
+    ScrapReasonID=ScrapReasonID)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
+    
     cursor = conn.cursor()
-    try:# Because this table doesn't auto increment DepartmentID, I created this method.
-        # Finds the maximum DepartmentID currently in the table
+    try:
+        # Because this table doesn't auto increment WorkOrderID, I created this method.
+        # Finds the maximum WorkOrderID currently in the table
         cursor.execute("SELECT MAX(WorkOrderID) FROM production_workorder")
         max_id = cursor.fetchone()[0]
 
-        # If the table is empty, DepartmentID is 1, otherwise increment the max_id
+        # If the table is empty, WorkOrderID is 1, otherwise increment the max_id
         WorkOrderID = 1 if max_id is None else max_id + 1
 
         cursor.execute(
-    "INSERT INTO production_workorder (WorkOrderID, ProductID, OrderQty, StockedQty, ScrappedQty, StartDate, DueDate) VALUES (%s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL %s WEEK))", 
-    (WorkOrderID, ProductID, OrderQty, StockedQty, ScrappedQty, num_weeks)
-)
+            "INSERT INTO production_workorder (WorkOrderID, ProductID, OrderQty, StockedQty, ScrappedQty, StartDate, DueDate, EndDate, ScrapReasonID) VALUES (%s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL %s WEEK), DATE_ADD(DATE_ADD(NOW(), INTERVAL %s WEEK), INTERVAL -1 DAY), %s)", 
+            (WorkOrderID, ProductID, OrderQty, StockedQty, ScrappedQty, num_weeks, num_weeks, ScrapReasonID)
+        )
 
         conn.commit()
     except Exception as e:
@@ -184,6 +175,7 @@ def create_work_order(ProductID: int, OrderQty: int,StockedQty:int,ScrappedQty:i
     finally:
         cursor.close()
     return {"message": "Workorder created successfully"}
+
 
 
 @app.put("/items/{item_id}")
