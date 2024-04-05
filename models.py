@@ -28,3 +28,15 @@ class WorkOrder(BaseModel):
     num_weeks: int
     ScrapReasonID: int
 
+class WorkOrderUpdate(BaseModel):
+    WorkOrderID: int
+    ProductID: int
+    OrderQty: int
+    StockedQty: int
+    ScrappedQty: int
+    num_weeks: int
+    ScrapReasonID: int
+
+class CommissionUpdate(BaseModel):
+    BusinessEntityID: int
+    CommissionPct: float

@@ -177,27 +177,58 @@ def create_work_order(ProductID: int, OrderQty: int, StockedQty: int, ScrappedQt
     return {"message": "Workorder created successfully"}
 
 
-
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
+@app.put("/Workorder_update/{WorkOrderID}/{ProductID}/{OrderQty}/{StockedQty}/{ScrappedQty}/{num_weeks}/{ScrapReasonID}")
+def update_workorder(WorkOrderID: int, ProductID: int, OrderQty: int, StockedQty: int, ScrappedQty: int, num_weeks: int, ScrapReasonID: int):
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE items SET name=%s, description=%s, price=%s WHERE id=%s", (item.name, item.description, item.price, item_id))
+        cursor.execute("UPDATE production_workorder SET ProductID = %s, OrderQty = %s, StockedQty = %s, ScrappedQty = %s, StartDate = NOW(), DueDate = DATE_ADD(NOW(), INTERVAL %s WEEK), EndDate = DATE_ADD(DATE_ADD(NOW(), INTERVAL %s WEEK), INTERVAL -1 DAY), ScrapReasonID = %s WHERE WorkOrderID = %s", 
+            (ProductID, OrderQty, StockedQty, ScrappedQty, num_weeks, num_weeks, ScrapReasonID, WorkOrderID))
         conn.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating data: {str(e)}")
     finally:
         cursor.close()
-    return {"message": "Item updated successfully"}
+    return {"message": "Workorder updated successfully"}
 
-@app.delete("/items/{item_id}")
-def delete_item(item_id: int):
+@app.put("/Comission_update/{BusinessEntityID}/{CommissionPct}")
+def update_comission(BusinessEntityID: int,CommissionPct: float):
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM items WHERE id=%s", (item_id,))
+        cursor.execute("UPDATE sales_salesperson SET CommissionPct = %s WHERE BusinessEntityID = %s", 
+            (CommissionPct,BusinessEntityID))
+        conn.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating data: {str(e)}")
+    finally:
+        cursor.close()
+    return {"message": "Sales comission updated successfully"}
+
+
+
+@app.delete("/workorder/{WorkOrderID}")
+def delete_item(WorkOrderID: int):
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM production_workorder WHERE WorkOrderID=%s", (WorkOrderID,))
         conn.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting data: {str(e)}")
     finally:
         cursor.close()
-    return {"message": "Item deleted successfully"}
+    return {"message": "Work Order deleted successfully"}
+
+@app.delete("/inactive_shoppingcartitems/{days}")
+def delete_inactive_shoppingcartitems(days: int):
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            DELETE FROM sales_shoppingcartitem
+            WHERE DATEDIFF(CURDATE(), ModifiedDate) > %s
+        """, (days,))
+        conn.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting data: {str(e)}")
+    finally:
+        cursor.close()
+    return {"message": "Inactive shopping cart items deleted successfully"}
+
